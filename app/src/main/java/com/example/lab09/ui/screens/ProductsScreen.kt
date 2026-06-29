@@ -57,7 +57,7 @@ fun ProductsScreen(
                         EmptyView("No hay productos para mostrar.")
                     } else {
                         LazyColumn(
-                            contentPadding = PaddingValues(vertical = 6.dp, bottom = 80.dp),
+                            contentPadding = PaddingValues(top = 6.dp, bottom = 80.dp),
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(s.products, key = { it.id }) { product ->
