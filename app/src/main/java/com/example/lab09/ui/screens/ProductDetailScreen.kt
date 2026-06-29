@@ -7,11 +7,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,13 +34,17 @@ import com.example.lab09.ui.viewmodel.ProductDetailViewModel
 fun ProductDetailScreen(
     productId: Int,
     onBack: () -> Unit,
+    onEdit: (Int) -> Unit,
     viewModel: ProductDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val favorites by viewModel.favoritesStore.favorites.collectAsStateWithLifecycle()
+    val deleted by viewModel.deleted.collectAsStateWithLifecycle()
+    val snackbarHost = remember { SnackbarHostState() }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(productId) {
-        viewModel.loadProduct(productId)
-    }
+    LaunchedEffect(productId) { viewModel.loadProduct(productId) }
+    LaunchedEffect(deleted) { if (deleted) onBack() }
 
     Scaffold(
         topBar = {
@@ -48,9 +54,18 @@ fun ProductDetailScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
+                },
+                actions = {
+                    IconButton(onClick = { onEdit(productId) }) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Editar")
+                    }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
+                    }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHost) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (val s = state) {
@@ -58,6 +73,7 @@ fun ProductDetailScreen(
                 is ProductDetailUiState.Error -> ErrorView(s.message) { viewModel.loadProduct(productId) }
                 is ProductDetailUiState.Success -> {
                     val p = s.product
+                    val isFav = favorites.containsKey(p.id)
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
@@ -81,8 +97,22 @@ fun ProductDetailScreen(
                             )
                         }
                         Spacer(Modifier.height(16.dp))
-                        Text(p.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                p.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { viewModel.toggleFavorite(p) }) {
+                                Icon(
+                                    if (isFav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                    contentDescription = "Favorito",
+                                    tint = if (isFav) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                         AssistChip(
                             onClick = {},
                             label = { Text(p.category.replaceFirstChar { it.uppercase() }) }
@@ -90,18 +120,14 @@ fun ProductDetailScreen(
                         Spacer(Modifier.height(12.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "$ ${"%.2f".format(p.price)}",
+                                "$ ${"%.2f".format(p.price)}",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
                             Spacer(Modifier.weight(1f))
                             p.rating?.let {
-                                Icon(
-                                    Icons.Filled.Star,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary
-                                )
+                                Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                                 Spacer(Modifier.width(4.dp))
                                 Text("${it.rate} (${it.count})")
                             }
@@ -112,14 +138,31 @@ fun ProductDetailScreen(
                         Text(p.description, style = MaterialTheme.typography.bodyMedium)
                         Spacer(Modifier.height(24.dp))
                         Button(
-                            onClick = {},
+                            onClick = {
+                                viewModel.addToCart(p)
+                            },
                             modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Agregar al carrito")
-                        }
+                        ) { Text("Agregar al carrito") }
                     }
                 }
             }
+        }
+
+        if (showDeleteDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteDialog = false },
+                title = { Text("Eliminar producto") },
+                text = { Text("¿Seguro que querés eliminar este producto? (Llamada DELETE a la API)") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDeleteDialog = false
+                        viewModel.deleteProduct(productId)
+                    }) { Text("Eliminar") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
+                }
+            )
         }
     }
 }

@@ -1,10 +1,12 @@
 package com.example.lab09.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddShoppingCart
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -22,7 +24,10 @@ import com.example.lab09.domain.Product
 @Composable
 fun ProductCard(
     product: Product,
+    isFavorite: Boolean,
     onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onAddToCart: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -92,11 +97,25 @@ fun ProductCard(
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(Modifier.width(2.dp))
-                        Text(
-                            text = "${it.rate}",
-                            style = MaterialTheme.typography.labelMedium
-                        )
+                        Text("${it.rate}", style = MaterialTheme.typography.labelMedium)
                     }
+                }
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Favorito",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onAddToCart) {
+                    Icon(
+                        Icons.Filled.AddShoppingCart,
+                        contentDescription = "Agregar al carrito",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }
